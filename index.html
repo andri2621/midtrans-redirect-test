@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <title>Result Payment</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- ✅ Tambahkan SDK WeChat di sini -->
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+
     <style>
       body {
         font-family: sans-serif;
@@ -49,7 +53,6 @@
         const statusCode = params.get("status_code") || "";
         const transactionStatus = params.get("transaction_status") || "";
 
-        // Payload yang akan dikirim ke Mini Program
         const payload = {
           event: "MIDTRANS_DONE",
           order_id: orderId,
@@ -57,76 +60,62 @@
           code: statusCode || "",
         };
 
-        // Fungsi cek environment Mini Program
-        function isMiniProgramEnv() {
-          return (
-            (typeof window.__wxjs_environment !== "undefined" &&
-              window.__wxjs_environment === "miniprogram") ||
-            (window.navigator.userAgent &&
-              /miniProgram/i.test(window.navigator.userAgent)) ||
-            (window.wx &&
-              window.wx.miniProgram &&
-              typeof window.wx.miniProgram !== "undefined")
-          );
-        }
-
-        // Kirim pesan via mekanisme resmi
-        function sendViaWeChat() {
+        // ✅ Coba pakai JSSDK dulu
+        function sendViaSDK() {
           try {
-            window.wx.miniProgram.postMessage({ data: payload });
+            wx.miniProgram.postMessage({ data: payload });
             console.log("✅ posted via wx.miniProgram.postMessage:", payload);
-          } catch (err) {
-            console.warn("❌ postMessage via wx.miniProgram gagal", err);
+          } catch (e) {
+            console.warn("❌ Gagal wx.miniProgram.postMessage:", e);
           }
         }
 
-        // Fallback jika tidak berada di Mini Program (browser biasa)
+        // ✅ Fallback lama
         function sendFallback() {
           try {
             window.parent.postMessage(payload, "*");
             console.log("✅ posted via parent.postMessage:", payload);
-          } catch (err) {
-            console.warn("❌ parent.postMessage gagal", err);
+          } catch (e) {
+            console.warn("❌ parent.postMessage gagal:", e);
           }
         }
 
-        // Fungsi utama kirim pesan
+        // ✅ Deteksi dan kirim
         function sendToMiniProgram() {
-          if (isMiniProgramEnv() && window.wx && window.wx.miniProgram) {
-            sendViaWeChat();
+          if (window.wx && window.wx.miniProgram) {
+            sendViaSDK();
           } else {
-            console.log(
-              "⚠️ Tidak terdeteksi environment Mini Program, gunakan fallback"
-            );
+            console.log("⚠️ wx.miniProgram tidak ada, pakai fallback");
             sendFallback();
           }
         }
 
-        // Langsung kirim saat halaman load
+        // Auto-fire saat halaman terbuka
         sendToMiniProgram();
 
-        // Tangani tombol manual
+        // Tombol manual
         document.getElementById("btnReturn").addEventListener("click", () => {
           sendToMiniProgram();
-          // Coba langsung kembali ke Mini Program
           if (window.wx && window.wx.miniProgram) {
             try {
-              window.wx.miniProgram.navigateBack();
-            } catch (err) {
-              console.warn("navigateBack gagal, coba history.back()", err);
+              wx.miniProgram.navigateBack();
+            } catch (e) {
+              console.warn("navigateBack gagal:", e);
             }
-          } else {
-            console.log("window.wx && window.wx.miniProgram tidak ada");
           }
         });
 
-        // Tampilkan info
         document.getElementById("info").textContent = `Order: ${
           orderId || "-"
         } — Status: ${transactionStatus || statusCode || "-"}`;
 
-        // LOG environment info
+        // ✅ Logging environment
         console.log("ENV CHECK:", {
+          hasWx: typeof window.wx !== "undefined",
+          hasMiniProgram:
+            window.wx &&
+            window.wx.miniProgram &&
+            typeof window.wx.miniProgram.postMessage === "function",
           __wxjs_environment: window.__wxjs_environment,
           ua: navigator.userAgent,
         });
