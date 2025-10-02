@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Redirecting...</title>
+</head>
+<body>
+  <script>
+    // Ambil query dari Midtrans (order_id, status_code, transaction_status)
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get("order_id");
+    const statusCode = params.get("status_code");
+    const transactionStatus = params.get("transaction_status");
+
+    // Cek apakah halaman ini dibuka di dalam Mini Program
+    if (typeof wx !== "undefined" && wx.miniProgram) {
+      // Redirect ke halaman Mini Program (ganti path sesuai kebutuhan kamu)
+      wx.miniProgram.redirectTo({
+        url: `/pages/topup/payment-result/index?order_id=${orderId}&status=${transactionStatus}&code=${statusCode}`
+      });
+    } else {
+      // Fallback jika tidak dibuka dalam Mini Program
+      document.body.innerHTML = `
+        <h3>Pembayaran Berhasil</h3>
+        <p>Silakan kembali ke aplikasi.</p>
+      `;
+    }
+  </script>
+</body>
+</html>
