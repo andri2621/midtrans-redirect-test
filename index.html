@@ -2,29 +2,84 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Redirecting...</title>
+  <title>Pembayaran Selesai</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: sans-serif; padding: 24px; text-align: center; }
+    .card { max-width: 520px; margin: 40px auto; border-radius: 8px; padding: 20px; box-shadow: 0 6px 18px rgba(0,0,0,.06); }
+    button { margin-top: 18px; padding: 10px 18px; border-radius: 6px; border: none; background:#1aad19; color:#fff; font-size:16px; }
+    .muted { color: #666; margin-top:8px; font-size:14px; }
+  </style>
 </head>
 <body>
-  <script>
-    // Ambil query dari Midtrans (order_id, status_code, transaction_status)
-    const params = new URLSearchParams(window.location.search);
-    const orderId = params.get("order_id");
-    const statusCode = params.get("status_code");
-    const transactionStatus = params.get("transaction_status");
+  <div class="card">
+    <h2>Pembayaran Berhasil</h2>
+    <p id="info" class="muted">Silakan kembali ke aplikasi untuk melihat hasil transaksi.</p>
+    <button id="btnReturn">Kembali ke Aplikasi</button>
+  </div>
 
-    // Cek apakah halaman ini dibuka di dalam Mini Program
-    if (typeof wx !== "undefined" && wx.miniProgram) {
-      // Redirect ke halaman Mini Program (ganti path sesuai kebutuhan kamu)
-      wx.miniProgram.redirectTo({
-        url: `/pages/topup/payment-result/index?order_id=${orderId}&status=${transactionStatus}&code=${statusCode}`
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const orderId = params.get("order_id") || "";
+      const statusCode = params.get("status_code") || "";
+      const transactionStatus = params.get("transaction_status") || "";
+
+      // payload yang ingin dikirim ke Mini Program
+      const payload = {
+        type: "MIDTRANS_DONE",
+        order_id: orderId,
+        status: transactionStatus || "",
+        code: statusCode || ""
+      };
+
+      // Deteksi environment mini program (robust)
+      const isMiniProgramEnv = (typeof window.__wxjs_environment !== 'undefined' && window.__wxjs_environment === 'miniprogram')
+        || (navigator.userAgent && /miniprogram/i.test(navigator.userAgent))
+        || (typeof window.wx !== 'undefined' && window.wx.miniProgram);
+
+      // fungsi kirim pesan (coba beberapa cara)
+      function sendMessage() {
+        try {
+          if (isMiniProgramEnv && window.wx && window.wx.miniProgram && typeof window.wx.miniProgram.postMessage === 'function') {
+            // kirim ke mini program (akan diterima oleh bindmessage saat webview ditutup)
+            window.wx.miniProgram.postMessage({ data: payload });
+            console.log('posted via wx.miniProgram.postMessage', payload);
+            return;
+          }
+        } catch (err) {
+          console.warn('wx.postMessage failed', err);
+        }
+
+        // fallback generic (beberapa webviews mendukung parent.postMessage)
+        try {
+          if (window.parent && typeof window.parent.postMessage === 'function') {
+            window.parent.postMessage(payload, '*');
+            console.log('posted via parent.postMessage', payload);
+            return;
+          }
+        } catch (err) {
+          console.warn('parent.postMessage failed', err);
+        }
+
+        console.log('no postMessage channel detected');
+      }
+
+      // Kirim pesan sekali pada load untuk "queue" pesan (akan diterima pada destruction/back)
+      sendMessage();
+
+      // Tombol manual agar user bisa memicu pengiriman dan lalu kembali
+      const btn = document.getElementById('btnReturn');
+      btn.addEventListener('click', () => {
+        sendMessage();
+        // coba kembali pada history (fallback) — seringnya user akan menekan back pada chrome view atau nav
+        try { window.history.back(); } catch(e) {}
       });
-    } else {
-      // Fallback jika tidak dibuka dalam Mini Program
-      document.body.innerHTML = `
-        <h3>Pembayaran Berhasil</h3>
-        <p>Silakan kembali ke aplikasi.</p>
-      `;
-    }
+
+      // Tampilkan informasi ringkas
+      const info = document.getElementById('info');
+      info.textContent = `Order: ${orderId || '-'} — Status: ${transactionStatus || statusCode || '-'}`;
+    })();
   </script>
 </body>
 </html>
