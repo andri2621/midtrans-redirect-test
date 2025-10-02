@@ -83,10 +83,15 @@
         // ✅ Deteksi dan kirim
         function sendToMiniProgram() {
           if (window.wx && window.wx.miniProgram) {
-            sendViaSDK();
+            console.log("✅ kirim via redirectTo");
+            window.wx.miniProgram.redirectTo({
+              url: `/pages/main/home/home`,
+            });
           } else {
-            console.log("⚠️ wx.miniProgram tidak ada, pakai fallback");
-            sendFallback();
+            console.log(
+              "⚠️ Tidak ada wx.miniProgram, fallback parent.postMessage"
+            );
+            window.parent.postMessage(payload, "*");
           }
         }
 
@@ -96,12 +101,15 @@
         // Tombol manual
         document.getElementById("btnReturn").addEventListener("click", () => {
           sendToMiniProgram();
+
           if (window.wx && window.wx.miniProgram) {
             try {
               wx.miniProgram.navigateBack();
             } catch (e) {
               console.warn("navigateBack gagal:", e);
             }
+          } else {
+            console.log("TIDAK ADA window.wx atau window.wx.miniProgram");
           }
         });
 
