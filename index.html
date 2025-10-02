@@ -60,73 +60,36 @@
           code: statusCode || "",
         };
 
-        // ✅ Coba pakai JSSDK dulu
-        function sendViaSDK() {
-          try {
-            wx.miniProgram.postMessage({ data: payload });
-            console.log("✅ posted via wx.miniProgram.postMessage:", payload);
-          } catch (e) {
-            console.warn("❌ Gagal wx.miniProgram.postMessage:", e);
-          }
-        }
-
-        // ✅ Fallback lama
-        function sendFallback() {
-          try {
-            window.parent.postMessage(payload, "*");
-            console.log("✅ posted via parent.postMessage:", payload);
-          } catch (e) {
-            console.warn("❌ parent.postMessage gagal:", e);
-          }
-        }
-
-        // ✅ Deteksi dan kirim
+        // ✅ Kirim ke Mini Program via sendWebviewEvent
         function sendToMiniProgram() {
-          if (window.wx && window.wx.miniProgram) {
-            console.log("✅ kirim via redirectTo");
-            window.wx.miniProgram.redirectTo({
-              url: `pages/main/home/home`,
-            });
+          if (
+            window.wx &&
+            window.wx.miniProgram &&
+            wx.miniProgram.sendWebviewEvent
+          ) {
+            try {
+              wx.miniProgram.sendWebviewEvent(payload);
+              console.log("✅ sendWebviewEvent terkirim:", payload);
+            } catch (err) {
+              console.warn("❌ Gagal sendWebviewEvent:", err);
+            }
           } else {
-            console.log(
-              "⚠️ Tidak ada wx.miniProgram, fallback parent.postMessage"
-            );
+            console.log("⚠️ sendWebviewEvent tidak tersedia, fallback");
             window.parent.postMessage(payload, "*");
           }
         }
 
-        // Auto-fire saat halaman terbuka
+        // Auto kirim
         sendToMiniProgram();
 
         // Tombol manual
         document.getElementById("btnReturn").addEventListener("click", () => {
           sendToMiniProgram();
-
-          if (window.wx && window.wx.miniProgram) {
-            try {
-              wx.miniProgram.navigateBack();
-            } catch (e) {
-              console.warn("navigateBack gagal:", e);
-            }
-          } else {
-            console.log("TIDAK ADA window.wx atau window.wx.miniProgram");
-          }
         });
 
         document.getElementById("info").textContent = `Order: ${
           orderId || "-"
         } — Status: ${transactionStatus || statusCode || "-"}`;
-
-        // ✅ Logging environment
-        console.log("ENV CHECK:", {
-          hasWx: typeof window.wx !== "undefined",
-          hasMiniProgram:
-            window.wx &&
-            window.wx.miniProgram &&
-            typeof window.wx.miniProgram.postMessage === "function",
-          __wxjs_environment: window.__wxjs_environment,
-          ua: navigator.userAgent,
-        });
       })();
     </script>
   </body>
