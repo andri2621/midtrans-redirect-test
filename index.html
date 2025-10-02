@@ -5,7 +5,7 @@
     <title>Result Payment</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- ✅ Tambahkan SDK WeChat di sini -->
+    <!-- JSSDK (tidak wajib, tapi aman disimpan) -->
     <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
 
     <style>
@@ -60,36 +60,86 @@
           code: statusCode || "",
         };
 
-        // ✅ Kirim ke Mini Program via sendWebviewEvent
-        function sendToMiniProgram() {
-          if (
-            window.wx &&
-            window.wx.miniProgram &&
-            wx.miniProgram.sendWebviewEvent
-          ) {
-            try {
+        // ✅ Debug awal untuk tahu apa yang tersedia
+        console.log("ENV CHECK:", {
+          hasWx: typeof window.wx !== "undefined",
+          hasMiniProgram: !!(window.wx && window.wx.miniProgram),
+          hasSendEvent:
+            typeof window.wx?.miniProgram?.sendWebviewEvent === "function",
+          __wxjs_environment: window.__wxjs_environment,
+          userAgent: navigator.userAgent,
+        });
+
+        // ✅ Cara 1: sendWebviewEvent
+        function trySendWebviewEvent() {
+          try {
+            if (
+              window.wx &&
+              wx.miniProgram &&
+              typeof wx.miniProgram.sendWebviewEvent === "function"
+            ) {
               wx.miniProgram.sendWebviewEvent(payload);
               console.log("✅ sendWebviewEvent terkirim:", payload);
-            } catch (err) {
-              console.warn("❌ Gagal sendWebviewEvent:", err);
+              return true;
             }
-          } else {
-            console.log("⚠️ sendWebviewEvent tidak tersedia, fallback");
-            window.parent.postMessage(payload, "*");
+          } catch (err) {
+            console.warn("❌ Gagal sendWebviewEvent:", err);
           }
+          return false;
         }
 
-        // Auto kirim
+        // ✅ Cara 2: postMessage
+        function tryPostMessage() {
+          try {
+            window.parent.postMessage(payload, "*");
+            console.log("✅ parent.postMessage terkirim:", payload);
+            return true;
+          } catch (err) {
+            console.warn("❌ Gagal parent.postMessage:", err);
+          }
+          return false;
+        }
+
+        // ✅ Cara 3: redirect langsung ke mini program
+        function tryRedirect() {
+          try {
+            if (window.wx && wx.miniProgram) {
+              wx.miniProgram.redirectTo({
+                url: "/pages/main/home/home",
+                success: () => console.log("✅ redirectTo berhasil"),
+                fail: (e) => console.warn("❌ redirectTo gagal:", e),
+              });
+              return true;
+            }
+          } catch (err) {
+            console.warn("❌ redirectTo error:", err);
+          }
+          return false;
+        }
+
+        // ✅ Urutan eksekusi otomatis
+        function sendToMiniProgram() {
+          console.log("🔄 Mulai kirim event ke Mini Program...");
+
+          if (trySendWebviewEvent()) return;
+          if (tryPostMessage()) return;
+          tryRedirect();
+        }
+
+        // ✅ Auto fire
         sendToMiniProgram();
 
-        // Tombol manual
+        // ✅ Tombol manual
         document.getElementById("btnReturn").addEventListener("click", () => {
           sendToMiniProgram();
         });
 
-        document.getElementById("info").textContent = `Order: ${
-          orderId || "-"
-        } — Status: ${transactionStatus || statusCode || "-"}`;
+        // ✅ Tampilkan info
+        document.getElementById(
+          "info"
+        ).textContent = `Order: ${orderId || "-"} — Status: ${
+          transactionStatus || statusCode || "-"
+        }`;
       })();
     </script>
   </body>
